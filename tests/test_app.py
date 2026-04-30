@@ -1,5 +1,7 @@
 from http import HTTPStatus
 
+from fast_api_zero.schemas import UserPublic
+
 
 def test_root_deve_retornar_ola_mundo(client):
     """
@@ -16,17 +18,14 @@ def test_root_deve_retornar_ola_mundo(client):
     assert response.status_code == HTTPStatus.OK  # (200)
 
 
-def teste_html(client):
+def test_html(client):
 
-    client
     response = client.get('/html')
 
     assert response.text == """<body> Olá mundo ! </body>"""
 
 
-def teste_create_user(client):
-
-    client
+def test_create_user(client):
 
     response = client.post(
         '/users/',
@@ -46,42 +45,37 @@ def teste_create_user(client):
     }
 
 
-def test_read_user(client):
+def test_read_user_with_user(client, user_test):
 
-    client
+    response = client.get('/users/')
+    users = UserPublic.model_validate(user_test).model_dump()
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'users': [users]}
+
+
+def test_read_user(client):
 
     response = client.get('/users/')
 
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {
-        'users': [
-            {
-                'username': 'weder',
-                'email': 'wilder@example.com',
-                'id': 1,
-            }
-        ]
-    }
+    assert response.json() == {'users': []}
 
 
-def test_read_user_only(client):
-
-    client
+def test_read_user_only(client, user_test):
 
     response = client.get('/users/1')
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
-        'username': 'weder',
-        'email': 'wilder@example.com',
-        'id': 1,
+        'username': user_test.username,
+        'email': user_test.email,
+        'id': user_test.id,
     }
 
 
-def test_uptade_user(client):
-
+def test_uptade_user(client, user_test):
     response = client.put(
-        '/users/1?new_email=weder_gatinho@gmail.com',
+        '/users/1',
         json={
             'username': 'weder',
             'email': 'wilder@example.com',
@@ -89,10 +83,10 @@ def test_uptade_user(client):
         },
     )
 
-    assert response.status_code == HTTPStatus.CREATED
+    assert response.status_code == HTTPStatus.OK
     assert response.json() == {
         'username': 'weder',
-        'email': 'weder_gatinho@gmail.com',
+        'email': 'wilder@example.com',
         'id': 1,
     }
 
@@ -111,27 +105,46 @@ def test_update_user_raise_error(client):
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_delete_user(client):
+def test_delete_user(client, user_test):
 
     response = client.delete('/users/1')
 
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {
-        'username': 'weder',
-        'email': 'weder_gatinho@gmail.com',
-        'id': 1,
-    }
+    assert response.json() == {'message': 'Usuário EXCLUIDO'}
 
 
-def test_delete_user_raise_error(client):
+def test_delete_user_raise_error(client, user_test):
 
     response = client.delete('/users/2')
 
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_user_only_raise_error(client):
+def test_user_only_raise_error(client, user_test):
 
     response = client.get('/users/2')
 
     assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_update_integrity_error(client, user_test):
+
+    client.post(
+        '/users',
+        json={
+            'username': 'test',
+            'email': 'wilderziioss@gmail.com',
+            'senha': 'calirbe',
+        },
+    )
+
+    response = client.put(
+        f'/users/{user_test.id}',
+        json={
+            'username': 'test',
+            'email': 'testww@example.com',
+            'senha': 'secsret',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT

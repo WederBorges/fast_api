@@ -8,7 +8,9 @@ from fast_api_zero.models import User
 def test_create_user(session, moc_db_time):
 
     with moc_db_time(model=User) as time:
-        new_user = User(username='weder', email='teste', password='secret')
+        new_user = User(
+            username='teste', email='teste@example.com', password='secret'
+        )
 
         session.add(new_user)
         session.commit()
