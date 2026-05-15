@@ -45,20 +45,26 @@ def test_create_user(client):
     }
 
 
-def test_read_user_with_user(client, user_test):
+def test_read_user_with_user(client, user_test, token):
 
-    response = client.get('/users/')
+    response = client.get(
+        '/users/', headers={'Authorization': f'Bearer {token}'}
+    )
     users = UserPublic.model_validate(user_test).model_dump()
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'users': [users]}
 
 
-def test_read_user(client):
+def test_read_user(client, token):
 
-    response = client.get('/users/')
+    response = client.get(
+        '/users/', headers={'Authorization': f'Bearer {token}'}
+    )
 
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {'users': []}
+    assert response.json() == {
+        'users': [{'username': 'test', 'email': 'test@example.com', 'id': 1}]
+    }
 
 
 def test_read_user_only(client, user_test):
@@ -73,9 +79,10 @@ def test_read_user_only(client, user_test):
     }
 
 
-def test_uptade_user(client, user_test):
+def test_uptade_user(client, user_test, token):
     response = client.put(
         '/users/1',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'weder',
             'email': 'wilder@example.com',
@@ -91,33 +98,15 @@ def test_uptade_user(client, user_test):
     }
 
 
-def test_update_user_raise_error(client):
+def test_delete_user(client, user_test, token):
 
-    response = client.put(
-        '/users/2?new_email=weder_gatinho@gmail.com',
-        json={
-            'username': 'weder',
-            'email': 'wilder@example.com',
-            'senha': 'secret',
-        },
+    response = client.delete(
+        f'/users/{user_test.id}',
+        headers={'Authorization': f'Bearer {token}'},
     )
-
-    assert response.status_code == HTTPStatus.NOT_FOUND
-
-
-def test_delete_user(client, user_test):
-
-    response = client.delete('/users/1')
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'message': 'Usuário EXCLUIDO'}
-
-
-def test_delete_user_raise_error(client, user_test):
-
-    response = client.delete('/users/2')
-
-    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_user_only_raise_error(client, user_test):
@@ -127,12 +116,12 @@ def test_user_only_raise_error(client, user_test):
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_update_integrity_error(client, user_test):
+def test_update_integrity_error(client, user_test, token):
 
     client.post(
         '/users',
         json={
-            'username': 'test',
+            'username': '1weder',
             'email': 'wilderziioss@gmail.com',
             'senha': 'calirbe',
         },
@@ -140,11 +129,26 @@ def test_update_integrity_error(client, user_test):
 
     response = client.put(
         f'/users/{user_test.id}',
+        headers={'Authorization': f'Bearer {token}'},
         json={
-            'username': 'test',
-            'email': 'testww@example.com',
-            'senha': 'secsret',
+            'username': '1weder',
+            'email': 'test@example.com',
+            'senha': 'secret',
         },
     )
 
     assert response.status_code == HTTPStatus.CONFLICT
+
+
+def test_get_token(client, user_test):
+    response = client.post(
+        '/token',
+        data={'username': user_test.email, 'password': 'secret'},
+    )
+    token = response.json()
+
+    assert response.status_code == HTTPStatus.OK
+    assert token['token_type'] == 'Bearer'
+    assert 'acess_token' in token
+    print(token)
+    print(response)
